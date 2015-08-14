@@ -21,6 +21,7 @@
 \usepackage{caption} 
 \usepackage{subcaption}
 \usepackage{verbatim}
+\usepackage[update,prepend]{epstopdf}
 \definecolor{DeepSkyBlue}{rgb}{0.6,0.6,1}
 \setbeamercolor{eecks} {bg=DeepSkyBlue, fg=black!10}
 \setbeamercolor{eeks2}{bg=black!8, fg=black}
@@ -272,8 +273,25 @@ n(-1) &+& p(4) &+& 0(-1) +\\
 
 
 
+\section{Strategies for faster algorithms}
+
 \begin{frame}
-\frametitle{Reduce processing time using look-up tables (LUT)}
+\frametitle{Strategies to Simplify Computations in Image Filtering}
+\begin{figure}[htb]
+  \begin{center}
+  \includegraphics[height=1.5in]{FOCUS.JPG}
+  
+  \end{center}
+  \end{figure}
+\begin{enumerate}
+\item Use lookup tables (LUTs) to reduce computation time
+\pause\item Use bit truncation to reduce the size of LUTs
+\pause\item Decompose kernel exactly or approximately to simplify LUTs
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{Reduce Processing Time Using Look-up Tables (LUTs)}
 \begin{beamerboxesrounded}[lower=eeks2,upper=eecks,
 shadow=true]{IDEA}
 %Idea: %Store the pre-calculated 
@@ -284,12 +302,12 @@ store them in a multi-dimensional table.
 \end{beamerboxesrounded}
 
 $$
-\begin{bmatrix}
+K * \begin{bmatrix}
 x_1 & x_2 & x_3\\
 x_4 & x_5 & x_6\\
 x_7 & x_8 & x_9
 \end{bmatrix}
-*K \rightarrow LUT(x_1,x_2,\dots,x_9)
+ \rightarrow LUT(x_1,x_2,\dots,x_9)
 $$
 
 \begin{itemize}
@@ -298,27 +316,13 @@ $$
 \end{itemize}
 \end{frame}
 
-\section{Strategies for faster algorithms}
+\begin{frame}\frametitle{Truncating to Reduce LUT Size}
+\begin{beamerboxesrounded}[lower=eeks2,upper=eecks,
+shadow=true]{IDEA}
+If we reduce the number of possible inputs, we can reduce the number of elements in the LUT!
+\end{beamerboxesrounded}
 
-\begin{frame}
-\frametitle{Some Strategies to reduce LUTs' size}
-\begin{figure}[htb]
-  \begin{center}
-  \includegraphics[height=1.3in]{strategy.jpg}
-  
-  \end{center}
-  \end{figure}
-\begin{enumerate}
-\item LUT and Truncation
-\item Matrix Decomposition and Approximate decomposition
-\end{enumerate}
-\end{frame}
-
-\begin{frame}
-\frametitle{Truncation to reduce LUT's size}
-Example: truncating by 3 digits.
-
-Replace 
+\pause\begin{solution}Replace the inputs
 
 \[
 \left.
@@ -338,11 +342,137 @@ Replace
 \]
 
 to do the kernel convolution, and pre-store the results in the LUT with index $00101$.
+\end{solution}
 
 \end{frame}
 
+\begin{frame}\frametitle{Truncation Matrices and Image Norms}
+If our convolution kernel $K$ is $n\times n$, we can choose a \emph{truncation matrix} $T = [t_{ij}]_{n\times n}$ with integer elements from 0 to 8 to indicate how many bits to truncate from each pixel when convolving with $K$. An example might be $T = \left[\begin{smallmatrix}5 & 5 & 5\\ 5 & 2 & 5\\ 5 & 5 & 5\end{smallmatrix}\right]$
 
+%\pause\begin{example}
+%If $T = \left[\begin{smallmatrix}5 & 5 & 5\\ 5 & 2 & 5\\ 5 & 5 & 5\end{smallmatrix}\right]$, this indicates that before performing the computation for pixel $ij$, $ij$'s neighboring pixels' values should be truncated by 5 bits and pixel $ij$'s value should be truncated by 2 bits.
+%\end{example}
 
+\pause\begin{definition}[Image Norms]
+\begin{itemize}
+\item[]
+$l_{\infty}$-error(A,B)$=\textrm{max}_{i,j} | a_{ij} - b_{ij}|$
+\item[]
+$l_2$-error(A,B)$=\sqrt{ \frac{ \sum_{i,j} \left( a_{ij} - b_{ij} \right)^2} {h \times w}}$
+\item []
+PSNR(A,B)$=20 \cdot \textrm{log}_{10} ( \frac{\textrm{MAX}_B}{\sqrt{\textrm{MSE}}} )$
+\item[] $d_\text{IMED}^2(A,B) = \frac{1}{2\pi\cdot h\cdot w}\sum_{i,k = 1}^h\sum_{j,\ell = 1}^w \exp\left(\frac{-(k^2+\ell^2)}{2}\right)\big(a_{ij}-b_{ij}\big)\big(a_{i+k,j+\ell} - b_{i+k,j+\ell}\big)$
+\end{itemize}
+\end{definition}
+\end{frame}
+
+\begin{frame}\frametitle{High Pass Filters: Direct Computation vs. Truncation}
+\begin{center}
+\only<1>{For the next few slides, we will consider these birds.
+\includegraphics[scale=.64]{gulls/gulls.png}}
+%\only<2>{Here they are in grayscale.
+%\includegraphics[scale=.31]{gulls/fig01_gulls_gray.eps}}
+\end{center}
+\end{frame}
+
+\begin{frame}\frametitle{Example 1 of a $3\times3$ High Pass Filter}
+\begin{center}
+\only<1>{This is them after the HP kernel $K_1 = \frac14\left[\begin{smallmatrix}0 & \text{-}1 & 0\\\text{-}1 & 4 & \text{-}1\\0 & \text{-}1 & 0\end{smallmatrix}\right]$ was applied.
+\includegraphics[scale=.31]{gulls/fig02_HP_3x3_dc_1-eps-converted-to.pdf}}
+\only<2>{C'mon baby, make it HOT!
+\includegraphics[scale=.31]{gulls/fig02_HP_3x3_dc_1_HOT-eps-converted-to.pdf}}
+\only<3>{Here they are with $K_1$ applied with truncation $T_1 = \left[\begin{smallmatrix}8 & 3 & 8\\3 & 1 & 3\\8 & 3 & 8\end{smallmatrix}\right]$.
+\includegraphics[scale=.31]{gulls/fig03_HP_3x3_trunc_1_HOT-eps-converted-to.pdf}}
+\only<4>{Here is the difference image, color-coded for convenience.
+\includegraphics[scale=.47,clip,trim = 0cm 4cm 0cm 4.5cm]{gulls/fig04_HP_3x3_trunc_vs_dc_1-eps-converted-to.pdf}}
+\end{center}
+\only<4>{\vspace{-1cm}\hspace{1.8cm}\large{0} \hspace{.58cm}\large{1} \hspace{.58cm}\large{2} \hspace{.58cm}\large{3} \hspace{.56cm}\large{4} \hspace{.58cm}\large{5} \hspace{.58cm}\large{6} \hspace{.56cm}\large{7} \hspace{.58cm}\large{8} \hspace{.56cm}\large{9}}
+\end{frame}
+
+\begin{frame}\frametitle{Example 2 of a $3\times3$ High Pass Filter}
+\begin{center}
+\only<1>{This is the gulls after the HP kernel $K_2 = \frac18\left[\begin{smallmatrix}\text{-}1 & \text{-}1 & \text{-}1\\\text{-}1 & 8 & \text{-}1\\\text{-}1 & \text{-}1 & \text{-}1\end{smallmatrix}\right]$ was applied.
+\includegraphics[scale=.31]{gulls/fig08_HP_3x3_dc_2_HOT-eps-converted-to.pdf}}
+\only<2>{Here they are with $K_1$ applied with truncation $T_2 = \left[\begin{smallmatrix}4 & 4 & 4\\4 & 1 & 4\\4 & 4 & 4\end{smallmatrix}\right]$.
+\includegraphics[scale=.31]{gulls/fig09_HP_3x3_trunc_2_HOT-eps-converted-to.pdf}}
+\only<3>{Here is the difference image, color-coded for convenience.
+\includegraphics[scale=.47,clip,trim = 0cm 4cm 0cm 4.5cm]{gulls/fig10_HP_3x3_trunc_vs_dc_2-eps-converted-to.pdf}}
+\end{center}
+\only<3>{\vspace{-1cm}\hspace{1.8cm}\large{0} \hspace{.668cm}\large{1} \hspace{.666cm}\large{2} \hspace{.668cm}\large{3} \hspace{.666cm}\large{4} \hspace{.668cm}\large{5} \hspace{.668cm}\large{6} \hspace{.666cm}\large{7} \hspace{.668cm}\large{8}}
+\end{frame}
+
+\begin{frame}\frametitle{Example of a $5\times5$ High Pass Filter}
+\begin{center}
+\only<1>{This is the gulls after the HP kernel $K_3 = \frac{1}{24}\left[\begin{smallmatrix}\text{-}1 & \text{-}1 & \text{-}1 & \text{-}1 & \text{-}1\\\text{-}1 & \text{-}1 & \text{-}1 & \text{-}1 & \text{-}1\\\text{-}1 & \text{-}1 & 24 & \text{-}1 & \text{-}1\\\text{-}1 & \text{-}1 & \text{-}1 & \text{-}1 & \text{-}1\\\text{-}1 & \text{-}1 & \text{-}1 & \text{-}1 & \text{-}1\\\end{smallmatrix}\right]$.
+\includegraphics[scale=.3]{gulls/fig05_HP_5x5_dc_HOT-eps-converted-to.pdf}}
+\only<2>{Here they are with $K_3$ applied with truncation $T_3 = \left[\begin{smallmatrix}5 & 5 & 5 & 5 & 5\\5 & 5 & 5 & 5 & 5\\5 & 5 & 1 & 5 & 5\\5 & 5 & 5 & 5 & 5\\5 & 5 & 5 & 5 & 5\\\end{smallmatrix}\right]$.
+\includegraphics[scale=.3]{gulls/fig06_HP_5x5_trunc_HOT-eps-converted-to.pdf}}
+\only<3>{Here is the difference image, color-coded for convenience.
+\includegraphics[scale=.31,clip,trim = 0cm 1cm 0cm 1cm]{gulls/fig07_HP_5x5_trunc_vs_dc-eps-converted-to.pdf}}
+\end{center}
+\onslide<3>{\vspace*{-.75cm}\hspace{1.8cm}\large{0} \hspace{.625cm}\large{2} \hspace{.685cm}\large{4} \hspace{.685cm}\large{6} \hspace{.685cm}\large{8} \hspace{.685cm}\large{10} \hspace{.5cm}\large{12} \hspace{.5cm}\large{14} \hspace{.5cm}\large{16}}
+\end{frame}
+
+\begin{frame}\frametitle{And the Data to Back it Up!}
+Here are three very different pictures.
+\begin{figure}[h]
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[scale=.1]{lighthouse.jpg}
+\caption{A lighthouse}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[scale=.1]{sunset.jpg}
+\caption{A sunset}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[scale=.1]{waterfall.jpg}
+\caption{A waterfall}
+\end{subfigure}
+\end{figure}
+\pause When converted to grayscale and compared, we have the following chart:
+\begin{table}[ht]
+\begin{center}
+\begin{tabular}{c|c|c|c|c|}\cline{2-5}
+& $\ell^2$ & $\ell^\infty$ & PSNR & $d_\text{IMED}$ \\\hline \multicolumn{1}{ |c| }{(a) vs. (b)}
+& 64.8743  & 251 & 9.3835 & 64.043 \\\hline
+\multicolumn{1}{ |c| }{(a) vs. (c)}  & 59.2807 & 247 & 7.7803  & 58.6937\\\hline \multicolumn{1}{ |c| }{(b) vs. (c)} & 36.9946  & 229 & 10.3046 & 36.4582\\
+\hline
+\end{tabular}
+\caption{Comparison of image distances}
+%\label{table:comparison_of_errors}
+\end{center}
+\end{table}
+\end{frame}
+
+\begin{frame}\frametitle{And the Data to Back it Up!}
+\begin{table}[ht]
+\begin{center}
+\begin{tabular}{c|c|c|c|c|}\cline{2-5}
+& $\ell^2$ & $\ell^\infty$ & PSNR & $d_\text{IMED}$ \\\hline \multicolumn{1}{ |c| }{(a) vs. (b)}
+& 64.8743  & 251 & 9.3835 & 64.043 \\\hline
+\multicolumn{1}{ |c| }{(a) vs. (c)}  & 59.2807 & 247 & 7.7803  & 58.6937\\\hline \multicolumn{1}{ |c| }{(b) vs. (c)} & 36.9946  & 229 & 10.3046 & 36.4582\\
+\hline
+\end{tabular}
+%\caption{Comparison of image distances}
+%\label{table:comparison_of_errors}
+\end{center}
+\end{table}
+Keep these numbers in mind as we compare our filtered images.
+
+\pause\begin{table}[ht]
+\begin{center}
+\begin{tabular}{c|c|c|c|c|}\cline{2-5}
+& $\ell^2$ & $\ell^\infty$ & \only<2>{PSNR} \only<3>{\textcolor{red}{PSNR}} & $d_\text{IMED}$ \\\hline \multicolumn{1}{ |c| }{$K_1$ DC vs. $K_1$ Trunc.}
+& 3.4992  & 9 & \only<2>{37.2515} \only<3>{\textcolor{red}{37.2515}} & 3.1401 \\\hline
+\multicolumn{1}{ |c| }{$K_2$ DC vs. $K_2$ Trunc.}  & 3.6366 & 8 & \only<2>{36.917} \only<3>{\textcolor{red}{36.917}} & 3.3553\\\hline \multicolumn{1}{ |c| }{$K_3$ DC vs. $K_3$ Trunc.} & 8.5556  & 16 & \only<2>{29.4858} \only<3>{\textcolor{red}{29.4858}} & 8.2883\\
+\hline
+\end{tabular}
+\caption{Comparison of filters and their truncated forms}
+%\label{table:comparison_of_errors}
+\end{center}
+\end{table}
+\pause The PSNR values are particularly indicative of acceptable error, since lossy compression typically has a PSNR of about 30-50.
+\end{frame}
 
 \begin{frame}
 \frametitle{Decomposing rank 1 matrix}
@@ -352,11 +482,10 @@ shadow=true]{IDEA}
 %Idea: 
 If the kernel $(n\times n)$ matrix $K$ has rank 1, then % we can write it as
 $$
-K=cb^T
+K=c\cdot b^T=c*b^T
 $$
-where $c,b\in \mathbb{R}^n$. For example, the low pass filter kernel.
+where $c,b\in \mathbb{R}^{n\times 1}$. For example,
 \end{beamerboxesrounded}
-\todo{Emily writes: the person doing this slide can also mention quickly the existence of other commonly-used rank-1 filters. The gradient filters such as Sobel gradient filter (an edge-detection filter) is also of rank 1 and can be decomposed similarly.}
 $$
 K=
 \begin{bmatrix}
@@ -376,50 +505,50 @@ K=
 \end{bmatrix}
 $$
 Applying a filter K to an Image then becomes
-$$\text{IMAGE}*K=\text{IMAGE}*(cb^T)=(\text{IMAGE}*c)*b^T
+$$\text{IMAGE}*K=\text{IMAGE}*(c*b^T)=(\text{IMAGE}*c)*b^T
 $$
 so that we need two LUTs (with b and c) for one convolution.
- \end{frame}
+\end{frame}
 
 
 
 \begin{frame}
 \frametitle{Decomposing rank 1 matrix}
-An example: blurring filter with kernel
+An example: low pass filter with kernel
 $$
-K=
+K=\frac{1}{16}
 \begin{bmatrix}
 1 & 2 & 1\\
 2 & 4 & 2\\
 1 & 2 & 1
 \end{bmatrix}
-=
+=\frac{1}{4}
 \begin{bmatrix}
 1 \\
 2 \\
 1 
 \end{bmatrix}
-\cdot
+*\frac{1}{4}
 \begin{bmatrix}
 1 & 2 & 1
 \end{bmatrix}
-=c\cdot c^T
+\triangleq c* c^T
 $$
 \\
 Truncation matrix: 
 $$
 T_1=
 \begin{bmatrix}
-2 \\
-1 \\
-2 
+ 2 \\
+ 1\\
+ 2
 \end{bmatrix}
 , \ \ \ \ \ \ 
 T_2=
 \begin{bmatrix}
-4 \\
-2 \\
-4 
+ 4 \\
+ 2\\
+ 4
 \end{bmatrix}
 $$
 By symmetry, only one look up table is needed.
@@ -439,10 +568,146 @@ By symmetry, only one look up table is needed.
 \begin{subfigure}[b]{0.4\textwidth} \includegraphics[width=\textwidth]{motor_lut_121.png} \caption{Low pass, LUT with $T_1$} %\label{fig:LPF} 
 \end{subfigure}
 \begin{subfigure}[b]{0.4\textwidth} \includegraphics[width=\textwidth]{motor_lut_242.png} \caption{Low pass, LUT with $T_2$} \end{subfigure}
-\caption{Comparison of filtered images}
+\caption{Comparison of filtered images.}
 %\label{fig:comp} 
 \end{figure}
 \end{frame}
+
+
+\begin{frame}
+\begin{center}
+\begin{table}
+	 
+    \begin{tabular}{ | c | c| c |}
+    \hline
+    Scheme & LUT Size & PSNR (dB) \\ \hline
+    LUT with $T_1$ & 512KB & 41.8459 \\ \hline
+    LUT with $T_2$ & 16KB & 30.4442 \\ \hline   
+    \end{tabular}
+    \bigskip
+    
+    \caption{Error and size of LUT for LUTs with different truncation schemes.}
+\end{table} \label{tbl:low_pass}
+\end{center}
+
+\begin{center}
+\begin{table}
+	
+    \begin{tabular}{ | c | c | c | }
+    \hline
+    LUT Size & Best Truncation & PSNR (dB) \\ \hline
+    16KB& $(0,b,0)$ with $b=(4,2,4)^T$ & 30.4442 \\ \hline
+    32KB& $(0,b,0)$ with $b=(3,3,3)^T$ & 33.3275 \\ \hline 
+    64KB& $(0,b,0)$ with $b=(3,2,3)^T$ & 35.5597 \\ \hline 
+    256KB& $(0,b,0)$ with $b=(2,2,2)^T$ & 39.4329 \\ \hline 
+    \end{tabular}
+    \bigskip
+    
+    \caption{Best truncation scheme for fixed-size LUT.}
+\end{table} \label{tbl:optimization}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Singular value decomposition}
+It is well known that any matrix can be written as the sum of a series of rank 1 matrices, i.e. we have the following singular value decomposition (SVD): 
+\[K=\sum_{i=1}^{r}\sigma_i u_i\cdot v_i^T=\sum_{i=1}^{r}\sigma_i u_i* v_i^T\]
+Here $u_i$,$v_i\in\mathbb{R}^{n\times 1}$ are the left and right singular vectors respectively and $\sigma_i$'s are singular values. Moreover, $u_i$'s and $v_i$'s compose of orthonormal matrices and $r$ is the rank of $K$. \\
+
+Now we are able to make use of the LUTs for rank 1 decomposition as in the previous section.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Singular value decomposition}
+Example: 
+$$
+K=\frac{1}{8}
+\begin{bmatrix}
+-1 & -1 & -1\\
+-1 &  8 & -1\\
+-1 & -1 & -1
+\end{bmatrix}
+=U\Sigma V^T
+$$
+where
+$$
+U=
+\begin{bmatrix}
+ 0.0971 & 0.7004 & -0.7071\\
+-0.9905 & 0.1374 & 0\\
+ 0.0971 & 0.7004 & 0.7071
+\end{bmatrix}
+, \ \ \ \ \ \Sigma=
+\begin{bmatrix}
+1.0245 & 0 & 0\\
+0& 0.2745 & 0\\
+0 & 0 & 0
+\end{bmatrix}
+$$
+and
+$$
+V=
+\begin{bmatrix}
+ 0.0971 & -0.7004 & -0.7071\\
+-0.9905 & -0.1374 & 0\\
+ 0.0971 & -0.7004 & 0.7071
+\end{bmatrix}
+$$
+$T_1$, $T_2$ as above.
+\end{frame}
+
+
+
+
+\begin{frame}
+\begin{figure}[h] \centering 
+\begin{subfigure}[b]{0.35\textwidth} \includegraphics[width=\textwidth]{house_original.png} \caption{Original image} %\label{fig:LPF} 
+\end{subfigure}
+\begin{subfigure}[b]{0.35\textwidth} \includegraphics[width=\textwidth]{house_direct.png} \caption{High pass, direct}\end{subfigure}
+
+\begin{subfigure}[b]{0.35\textwidth} \includegraphics[width=\textwidth]{house_lut_212.png} \caption{High pass, LUT with $T_1$} %\label{fig:LPF} 
+\end{subfigure}
+\begin{subfigure}[b]{0.35\textwidth} \includegraphics[width=\textwidth]{house_lut_424.png} \caption{High pass, LUT with $T_2$} \end{subfigure}
+\caption{Comparison of filtered images.}
+\label{fig:house} 
+\end{figure}
+\end{frame}
+
+
+\begin{frame}
+\begin{figure}[h!]
+  \centering
+    \includegraphics[width=0.65\textwidth]{house_difference_424.png}
+    \caption{Difference between the filtered image with direct computation and with LUT, $T_2$. Maximum pixel-wise difference: 18.}
+\end{figure}
+\end{frame}
+
+
+
+
+
+\begin{frame}
+\begin{center}
+\begin{table}
+	 
+    \begin{tabular}{ | c | c| c |}
+    \hline
+    Scheme & Total LUT Size & PSNR (dB) \\ \hline
+    LUT with $T_1$ & 3.8MB & 40.9868 \\ \hline
+    LUT with $T_2$ & 128.8KB & 30.4436 \\ \hline   
+    \end{tabular}
+    \bigskip
+    
+    \caption{Error and size of LUT for LUTs with different truncation schemes.}
+\end{table} \label{tbl:high_pass}
+\end{center}
+ \end{frame}
+
+
 
 \begin{frame}
 \frametitle{An Approximate Decomposition}
@@ -494,25 +759,25 @@ $$
 $$
 \arraycolsep=1.5pt\def\arraystretch{1.2}
 K=\begin{bmatrix}
-    -1 &   -1   &  0 \\
-    -1   &  0   &  1 \\
-     0   &  1  &   1
+    .1 &   .1   &  .1 \\
+    .1   &  .2   &  .1 \\
+     .1   &  .1  &   .1
 \end{bmatrix},
 \arraycolsep=1.0pt\def\arraystretch{1.2}
 A=
 \tiny
 {\begin{bmatrix}
-  -0.000  & -0.000   & 0.000 \\
-   -0.000   & 1.702  &  0 \\ 
-    0.000    &     0   &      0
+   0  &  0.2922        & 0\\
+   -0.0000 &   0.4132  &       0\\
+    0.0000  &  0.2922 &        0
 \end{bmatrix}}
 ,
 B=
 \tiny{\begin{bmatrix}
 
-   -0.587 &  -0.587   &      0\\
-   -0.587  &       0  &  0.587\\
-         0   & 0.587 &   0.587
+            0 &        0 &        0\\
+    0.2922  &  0.4132  &  0.2922\\
+   -0.0000  & -0.0000 &        0
 \end{bmatrix}}
 $$
 \begin{itemize}
@@ -524,27 +789,36 @@ $\|K-A_T*B_T\|_F < 3.04*10^{-5}$
 
 \begin{frame}
 
+\begin{figure}[h]
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[scale=.2]{boss_kitty1.png}
+\caption{Emboss}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[scale=.2]{HP_kitty1.png}
+\caption{High-Pass}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\includegraphics[scale=.2]{AV_kitty1.png}
+\caption{Averaging}
+\end{subfigure}
+\end{figure}
+
+
+
 \begin{table}[ht]
 \begin{center}
-\begin{tabular}{c|c|c|c|}\cline{2-4}
-& Emboss & Low-Pass & Averaging \\\hline \multicolumn{1}{ |c| }{PSNR}
-& 42.0500  & 71.0895 &  \\\hline
-\multicolumn{1}{ |c| }{$l_{2}$ - error}  & 0.0079 & 2.7895e-04 &  \\\hline \multicolumn{1}{ |c| }{$max$ - error} & 0.0144  & 6.1630e-04 & \\
+\begin{tabular}{c|c|c|c|c|}\cline{2-5}
+& Emboss & Low-Pass & Averaging & High-Pass \\\hline \multicolumn{1}{ |c| }{PSNR}
+& 109.7337
+& 71.0895 & 51.2598& 25.6056  \\\hline
+\multicolumn{1}{ |c| }{$l_{2}$ - error}  &  8.2883e-04 & 2.7895e-04 & 0.7163 & 13.3739 \\\hline \multicolumn{1}{ |c| }{$l_{\infty}$ - error} & 0.0019  & 6.1630e-04 & 4.2445 & 24.4963 \\ 
 \hline
 \end{tabular}
 \caption{Comparison of errors}
 \label{table:comparison_of_errors}
 \end{center}
 \end{table}
-The errors are measured as such
-\begin{itemize}
-\item []
-PSNR(A,B)$=20 \cdot \textrm{log}_{10} ( \frac{\textrm{MAX}_B}{\sqrt{\textrm{MSE}}} )$
-\item[]
-$l_2$-error(A,B)$=\sqrt{ \frac{ \sum_{i,j} \left( a_{ij} - b_{ij} \right)^2} {h \times w}}$
-\item[]
-$l_{\infty}$-error(A,B)$=\textrm{max}_{i,j} | a_{ij} - b_{ij}|$
-\end{itemize}
 \end{frame}
 
 
@@ -556,10 +830,10 @@ $l_{\infty}$-error(A,B)$=\textrm{max}_{i,j} | a_{ij} - b_{ij}|$
 $$K = \left[\begin{matrix}1\\0\\\vdots\\0\end{matrix}\right]*[r_1] + \left[\begin{matrix}0\\1\\\vdots\\0\end{matrix}\right]*[r_2] + \cdots + \left[\begin{matrix}0\\0\\\vdots\\1\end{matrix}\right]*[r_n],$$
 where $r_i$ is the $i$th row of $K$.
 %\pause\item Also, convolving with one of the standard basis vectors of $\R^n$ is a vertical shift of pixels in the image, and does not require its own LUT.
-\pause\item Essentially, this decomposition allows us to convolve our image by one row of $K$ at a time, and simply add the results at the end.
-\pause\item If using LUTs, computation is reduced to $n$ look-ups and $n-1$ additions per pixel, with each LUT having $2^{8n}$ entries.
-\pause\item Compare this to a single LUT, which requires only one look-up operation, but the table contains $2^{8n^2}$ entries!
-\pause\item Even when $n=3$, this is the difference between one 4-zebibyte table ($\approx$1\% of one mole of bytes) and three 16MB tables!
+\item Essentially, this decomposition allows us to convolve our image by one row of $K$ at a time, and simply add the results at the end.
+\item If using LUTs, computation is reduced to $n$ look-ups and $n-1$ additions per pixel, with each LUT having $2^{8n}$ entries.
+\item Compare this to a single LUT, which requires only one look-up operation, but the table contains $2^{8n^2}$ entries!
+\item  Even when $n=3$, this is the difference between one 4-zebibyte table ($\approx$1\% of one mole of bytes) and three 16MB tables!
 \end{itemize}
 \end{frame}
 
@@ -673,13 +947,15 @@ error} & 8.42 & 7.40 & 19.64 & 15.81 & 43.35 & 35.70 \\
 
 \begin{frame}
 \frametitle{Further Directions}
-\begin{enumerate}
-\item Refine convolution decomposition
-%\item Compute trade-off between errors (due to truncation) and speed
-\item SVD (singular value decomposition)
-%\item Run further tests
-%\item $5\times 5$ filter matrix
-\end{enumerate}
+\begin{figure}[htb]
+  \begin{center}
+  \includegraphics[height=1.7in,angle=270]{group4.JPG}
+  \caption{Eat more Punch pizza!}
+  
+  \end{center}
+  \end{figure}
+  
+  
 \end{frame}
 
 \begin{frame}
@@ -688,6 +964,10 @@ error} & 8.42 & 7.40 & 19.64 & 15.81 & 43.35 & 35.70 \\
 {\huge Thank you!}
 \end{center}
 % Thank the IMA and our mentor Dr. Wu
+% \begin{figure}
+% \includegraphics[width=2in]{group.JPG}
+% \includegraphics[width=2in]{group_rotated.JPG}
+% \end{figure}
 \end{frame}
 
 \end{document}
